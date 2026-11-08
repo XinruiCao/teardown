@@ -1,0 +1,9 @@
+---
+description: Build or edit interactive Three.js mechanical simulators, cutaways, exploded views or recorded tours using Teardown.
+alwaysApply: false
+---
+
+Read `SKILL.md` at the repository root for the shared workflow, then the closest
+example in `sims/`. Use native Cursor file, terminal, browser and image tools as
+available. `AGENTS.md` lists repository commands; `docs/agents.md` explains skill
+installation. Do not assume a Claude tool, path or model API is available.

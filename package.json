@@ -2,11 +2,18 @@
   "name": "teardown",
   "version": "1.0.0",
   "private": true,
-  "description": "A Claude Code skill that builds interactive 3D simulators of real machines and records them to 60 fps video.",
+  "description": "A portable AI skill for Codex, Cursor and other assistants that builds interactive 3D machine simulators and videos.",
   "license": "MIT",
   "scripts": {
-    "setup": "npm install && npx playwright install chromium",
-    "build": "node sims/build.mjs"
+    "setup": "npm ci && npx playwright install chromium",
+    "build": "node sims/build.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "install:skill": "node scripts/install.mjs",
+    "test": "node --test tests/install.test.mjs tests/doctor.test.mjs tests/sfx.test.mjs",
+    "test:browser": "node scripts/smoke-browser.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",

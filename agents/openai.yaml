@@ -1,0 +1,4 @@
+interface:
+  display_name: "Teardown · 3D Machines"
+  short_description: "Build interactive 3D machine cutaways and tours"
+  default_prompt: "Use $teardown to build an interactive 3D machine simulator with synchronized motion, gauges and cutaway controls."

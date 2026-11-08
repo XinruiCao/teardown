@@ -1,21 +1,33 @@
 ---
 name: teardown
-description: Build an interactive 3D simulator of a real machine or mechanism (an engine, a landing gear, a walking linkage, a pump, a gearbox) as one offline HTML page people can take apart, with live panels driven by the same model that moves the parts, a button for every subsystem, cutaways, camera views and an auto tour that hands control to the visitor; then record it frame by frame to a 60 fps video with a synced procedural score. Use when someone asks how a machine works, wants a "visual explainer", a "simulator", a "cutaway", an "exploded view" or an "interactive 3D lesson", or wants a 3D object shown working rather than described.
+description: Build or edit interactive Three.js machine simulators, mechanical cutaways and exploded views as offline HTML, with synchronized motion, gauges and an automatic tour. Use for visual explanations of mechanisms; optionally record a video with sound when requested. Not a CAD importer or an engineering validation solver.
 ---
 
 # Teardown
 
 One machine, one page. The visitor sees the thing run, presses a button, and the part doing the work opens up while the gauges around it read the real numbers. Left alone, the page tours itself with a cursor. The same code records a film of the tour, frame by frame, with a score built on the same timeline.
 
-`SKILL_DIR` below is the folder this file lives in. Builds and renders go to `./teardown-out` of the folder you run from.
+This workflow is model-neutral: use the host assistant's file, terminal, browser and image tools. No Claude-specific tools, model API, subscription or API key are required by the runtime. The assistant itself still needs its usual account or model access.
+
+`SKILL_DIR` below means the absolute folder containing this file, not the current project. It is notation, not an automatically supplied environment variable. Substitute the actual path or set it in your shell. Builds and renders go to `./teardown-out` of the folder you run from; `TEARDOWN_OUT` overrides this. Keep new machines in the user's project, outside a shared skill installation.
+
+## Host capabilities and scope
+
+- Read [docs/agents.md](docs/agents.md) for installation, host-specific entry points and a plain-prompt fallback.
+- With file and shell tools, implement and build the requested machine. With browser or image tools, also inspect the result. With text-only access, supply source and commands and state which checks the user must run; do not claim to have executed them.
+- Deliver the interactive page by default. Produce video and sound only when requested. Do not let unavailable recording dependencies block an HTML-only task.
+- Use the user's language for visible controls, explanations and delivery notes. Keep source identifiers consistent with the examples.
+- Use supplied references and dimensions when available. If absent, use a documented reference you can access, or label assumed dimensions and simplified dynamics explicitly. Do not present an illustrative mechanism or computed gauge as measured engineering data.
 
 ## First run
 
 ```
-cd "$SKILL_DIR" && npm install && npx playwright install chromium
+cd "$SKILL_DIR"
+npm ci
+node scripts/doctor.mjs
 ```
 
-The pages need nothing else. The video needs `ffmpeg` on PATH and the score needs Python 3 (standard library only). Set `FFMPEG`, `PYTHON` or `CHROMIUM` to point at other binaries.
+Node.js 20+ builds the pages. For browser review or capture, run `npx playwright install chromium` once in this folder, then `node scripts/doctor.mjs --capture`. Video and contact sheets also need `ffmpeg` on PATH; scores need Python 3 (standard library only). `node scripts/doctor.mjs --video --sound` checks the full recording toolchain. Set `FFMPEG`, `FFPROBE`, `PYTHON` or `CHROMIUM` to point at other binaries. Return to the user's project before building so outputs land there.
 
 ## The 3 examples
 
@@ -52,7 +64,7 @@ For a machine outside `SKILL_DIR`, make a folder with a `main.js` and import the
 
 ## Rules that decide whether it works
 
-1. **Start from a reference, never from imagination.** A photo, a cutaway drawing from a manual, a clip of the real thing. Build against it and compare frame by frame. Machines invented from a sentence come out generic every time; the same model rebuilds a real one closely when it has something to match.
+1. **Build against a reference.** Use a photo, a cutaway drawing from a manual or a clip of the mechanism when available. Compare geometry and motion against it. For an invented or underspecified machine, document assumptions instead of inventing provenance.
 2. **Real numbers, one source.** Get the real dimensions first (bore, stroke, tooth count, link lengths). Every gauge, chart and label reads from the same function that poses the parts, so nothing on screen can disagree with the motion. Check one by hand: in the Cessna, 32 teeth × 4 mm module is a 128 mm pitch diameter, and half its circumference is the 201 mm stroke.
 3. **One input drives everything.** Pose from the crank angle, the stroke or the wind. Nothing is keyframed by hand, so the film, the live page and the score never drift.
 4. **The part doing the work opens up.** Isolate it, cut it, x-ray it. A camera that goes inside is worth more than ten orbits.
@@ -62,9 +74,9 @@ For a machine outside `SKILL_DIR`, make a folder with a `main.js` and import the
 
 ## Live page rules
 
-- **Test on an integrated GPU.** A page that runs at 60 fps on a desktop card can drop to 15 fps on a laptop's built-in one. The examples carry quality tiers (`TIERS` in `live.js`): no AO, lower pixel ratio, smaller shadow maps, panels redrawn every other frame. Find the expensive shader first: a displacement computed 5 times per vertex costs more than every tier together.
+- **Check the available GPU and quality tiers.** An integrated GPU may be slower than a desktop card; report the hardware actually tested. The examples carry quality tiers (`TIERS` in `live.js`): no AO, lower pixel ratio, smaller shadow maps, panels redrawn every other frame. Find the expensive shader first.
 - **Warm the shaders.** `kit/warm.js` compiles every program in parallel before the first frame, so the page never freezes on first draw.
-- **Keep the page under 1 MB.** Link crawlers (X, Slack) read the share card from the HTML and give up on a 15 MB page. Big models go out as files next to the page: `build.json` → `{"external": {"heavy.glb": "light.glb"}}`.
+- **Prefer a compact, self-contained page.** Aim for about 1 MB where practical. If large models need external files, use `build.json` → `{"external": {"heavy.glb": "light.glb"}}` and deliver those files alongside the HTML; that build is no longer a single-file artifact.
 
 ## render(t) contract
 
@@ -91,21 +103,21 @@ node "$SKILL_DIR/sims/build.mjs" v8-film
 node "$SKILL_DIR/sims/capture.mjs" v8-film --size 1600x900 --dpr 1.2 --stills beats --cols 4 --out teardown-out/v8-beats.png
 node "$SKILL_DIR/sims/capture.mjs" v8-film --size 1600x900 --dpr 1.2 --still 12.5 --out teardown-out/v8-12.5.png
 node "$SKILL_DIR/sims/capture.mjs" v8-film --size 1600x900 --dpr 1.2 --out teardown-out/v8-silent.mp4
-python "$SKILL_DIR/run_sfx.py" "$SKILL_DIR/sims/v8-shared/score.py"
+python3 "$SKILL_DIR/run_sfx.py" "$SKILL_DIR/sims/v8-shared/score.py"
 ffmpeg -y -i teardown-out/v8-silent.mp4 -i teardown-out/v8-score.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k -shortest -movflags +faststart teardown-out/v8.mp4
 node "$SKILL_DIR/wave.mjs" teardown-out/v8.mp4 --timeline "$SKILL_DIR/sims/v8-film/timeline.json"
 ```
 
-`--size` is the CSS layout and `--dpr` multiplies it: 1600 x 900 at 1.2 gives 1920 x 1080. Capture prints the GPU it got; a software renderer means the GPU flags in `paths.mjs` did not take.
+`--size` is the CSS layout and `--dpr` multiplies it: 1600 x 900 at 1.2 gives 1920 x 1080. Capture prints the renderer it got. When a headless host has no usable GPU, set `TEARDOWN_SOFTWARE_GL=1` for software capture; identify it as software rendering and do not infer hardware performance from it.
 
 ## Review loop
 
-You cannot watch the video; you can look at frames. Never report a machine as done without reading sheets of the current render.
+Use the host's available visual tools. For HTML, open the current build and exercise orbit, zoom, pause, cutaway, gauges and the tour handover. For video, inspect frames or contact sheets, and the encoded output when supported. If visual inspection is unavailable, report that limitation explicitly with the build checks that did run.
 
 1. `--stills beats`: one tile per timeline beat, 0.3 s after it, each labelled `t=`.
 2. Read every tile against the checklist below.
 3. Zoom in: `--stills every:0.2 --from A --to B` for a transition, `--still T` for one full frame.
-4. Fix, rebuild, go back to 1. Stop when a full pass finds nothing.
+4. Fix observed defects, rebuild and repeat the affected checks. If blocked by unavailable tools or an unresolved issue, explain it instead of claiming the review passed.
 5. Final: `node "$SKILL_DIR/sheet.mjs" --video <final.mp4> --timeline <timeline.json>` and read that too: it shows what the encoder wrote.
 
 Checklist:
@@ -126,7 +138,7 @@ Checklist:
 
 ## Sound
 
-`sfx/` synthesises every sound in pure Python (48 kHz, reproducible) and reads the film's timeline, so sound cannot drift out of sync. `python "$SKILL_DIR/run_sfx.py" --list` shows the generators. `sample()` adds the recorded CC0 sounds in `sfx/samples/`. `sfx/score_kit.py` has the beds and accents the 3 scores use: a chord bed, a soft thud per power stroke, a motor, air under a drag.
+`sfx/` synthesises sound in pure Python (48 kHz, reproducible) and reads the film's timeline. `python3 "$SKILL_DIR/run_sfx.py" --list` shows the generators (use `python` on Windows if that is your Python 3 command). `sample()` adds recorded CC0 sounds in `sfx/samples/` and requires ffmpeg. `sfx/score_kit.py` has the beds and accents the 3 scores use: a chord bed, a soft thud per power stroke, a motor, air under a drag.
 
 - Every time comes from the timeline, never a typed number.
 - Mastering is automatic: −14 LUFS, true peak ≤ −2 dBFS.
